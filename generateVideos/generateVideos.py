@@ -2,6 +2,7 @@ import os
 import sys
 import wave
 import json
+from Scripts import Global
 
 from vosk import Model, KaldiRecognizer, SetLogLevel
 # !pip install vosk
@@ -28,17 +29,14 @@ SetLogLevel(0)
 #     print(f"'{model_path}' model was successfully read")
 
 
-
-
-
 def segmentVideos(videoFilePath, model):
     # name of the audio file to recognize
-    audio_filename = "D:/projects/kleosHackathon/streamlitFrontend/generateVideos/outputAudio/output.wav"
+    audio_filename = Global.audioOutput
     # name of the text file to write recognized text
-    text_filename = "./audio/speech_recognition_systems_vosk_with_timestamps.txt"
+    # text_filename = "./audio/speech_recognition_systems_vosk_with_timestamps.txt"
     video_filename = videoFilePath
 
-    output_folder_path = "D:/projects/kleosHackathon/streamlitFrontend/output/videos"
+    output_folder_path = Global.videoOutputFolderPath
 
 
     cmd_str = "ffmpeg -i "+video_filename+" -acodec pcm_s16le -ac 1 -ar 8000 "+audio_filename+" -y"

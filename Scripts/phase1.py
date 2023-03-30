@@ -13,7 +13,7 @@ import streamlit as st
 from Scripts import Global
 
 
-path = Global.path
+path = Global.frameFolderPath
 
 # img = cv2.imread(path+"120.jpg");
 
@@ -101,13 +101,17 @@ def get_emotion(img,i):
     return result[0]['dominant_emotion']
 
 
+def deleteFrames():
+    for i in os.listdir(Global.frameFolderPath):
+        os.remove(Global.frameFolderPath+i)
+
 
 def __main__():
     global height, width
 
     #MODIFY THIS
-    count = 75
-    frameStart = 75
+    count = 0
+    frameStart = 0
 
     parameterDict = {}
 
@@ -120,11 +124,14 @@ def __main__():
         rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         result = face_mesh.process(rgb_image)
 
+
+        #0 - LIE
+        #1 - TRUTH
         p1 = get_lip_ratio(result, height, width)
         if p1 > Global.lipContractionRatio:
-            p1 = 0 #Represents Lie
+            p1 = 1 
         else: 
-            p1 = 1 #Represents Truth
+            p1 = 0 
 
         
         p2 = eyeGaze(img, result)
@@ -134,8 +141,10 @@ def __main__():
             p2 = 1 #Represents Truth
 
         p3 = get_emotions(count)
-        if p3 == "Fear":
+        if p3 =="fear" or p3=="sad" or p3=="anger":
             p3 = 0 #Represents Lie
+        elif p3=="neutral":
+            p3 = 0.5 
         else:
             p3 = 1 #Represents Truth
 
@@ -159,8 +168,20 @@ def giveResults(parameterDict):
         c2 += parameterDict[key][1]
         c3 += parameterDict[key][2]
 
-    st.warning("RESULTS")
+    c1 = (c1/Global.numberOfFrames) * 100
+    c2 = (c2/Global.numberOfFrames) * 100
+    c3 = (c3/Global.numberOfFrames) * 100
+    
+    # st.warning("RESULTS")
+    # st.write(c1, c2, c3)
+
+    st.warning("RESULTS IN PERCENTAGE OF TRUTH")
     st.write(c1, c2, c3)
+
+    st.warning("AVERAGE")
+    st.write("Percentage truth"+str((c1+c2+c3)/3))
+
+
 
 
 def get_emotions(frameNo):

@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from generateVideos import generateVideos
+
 from vosk import Model, KaldiRecognizer, SetLogLevel
 import sys
 import pandas as pd
@@ -8,7 +8,8 @@ import numpy as np
 
 
 #Scripts import
-from Scripts import phase1
+from generateVideos import generateVideos
+from Scripts import phase1, convertToFrames
 
 
 st.title("Truth-Lie-Detection")
@@ -32,13 +33,11 @@ def loadModel():
     print(f"'{model_path}' model was successfully read")
     return model
 
-# model = loadModel() 
+model = loadModel() 
 
-# with st.spinner('loading model...'):
-#     # generateVideos.segmentVideos(filename)
-#     loadModel()  
-
-# video = st.file_uploader(label="upload video")
+with st.spinner('loading model...'):
+    # generateVideos.segmentVideos(filename)
+    loadModel()  
 
 def file_selector(folder_path='.'):
     filenames = os.listdir(folder_path)
@@ -52,7 +51,10 @@ if st.button('Click to preprocess'):
     if filename.endswith((".mp4")):
         with st.spinner('Preprocessing the videos...'):
             # generateVideos.segmentVideos(filename)
-            generateVideos.segmentVideos(os.path.abspath(filename), model)
+            # generateVideos.segmentVideos(os.path.abspath(filename), model)
+            convertToFrames.makeFrames()
+            phase1.__main__()
+
         st.success('Done!')
 
 
@@ -80,4 +82,3 @@ if st.button('Click to preprocess'):
 
 # st.write(phase1.get_emotions(115))
 
-phase1.__main__()
