@@ -3,7 +3,8 @@ import sys
 import wave
 import json
 from Scripts import Global
-
+import streamlit as st
+import cv2
 from vosk import Model, KaldiRecognizer, SetLogLevel
 # !pip install vosk
 from generateVideos import Word
@@ -13,23 +14,52 @@ from moviepy.editor import *
 
 SetLogLevel(0)
 
-# model = None
+model = None
 
-# model_path = "generateVideos/model/vosk-model-en-us-0.22/vosk-model-en-us-0.22"
-# # path to vosk model downloaded from
-# # https://alphacephei.com/vosk/models
-# if not os.path.exists(model_path):
-#     print(f"Please download the model from https://alphacephei.com/vosk/models and unpack as {model_path}")
-#     sys.exit()
+model_path = "generateVideos/model/vosk-model-en-us-0.22/vosk-model-en-us-0.22"
+# path to vosk model downloaded from
+# https://alphacephei.com/vosk/models
+if not os.path.exists(model_path):
+    print(f"Please download the model from https://alphacephei.com/vosk/models and unpack as {model_path}")
+    sys.exit()
 
-# def loadModel():
-#     global model
-#     print(f"Reading your vosk model '{model_path}'...")
-#     model = Model(model_path)
-#     print(f"'{model_path}' model was successfully read")
+@st.cache_resource
+def loadModel():
+    global model
+    print(f"Reading your vosk model '{model_path}'...")
+    model = Model(model_path)
+    print(f"'{model_path}' model was successfully read")
 
 
-def segmentVideos(videoFilePath, model):
+def extractFirstFiveFrames(filepath):
+    currentframe = 0
+    currentVideo = 0
+    # for i in os.listdir(Global.videoOutputFolderPath):
+    # cam = cv2.VideoCapture(Global.videoOutputFolderPath+"output"+str(currentVideo)+".mp4")
+    cam = cv2.VideoCapture(filepath)
+    while(currentframe<5):
+        
+        # reading from frame
+        ret,frame = cam.read()
+
+        if ret:
+            # if video is still left continue creating images
+            name = Global.thresholdFramesFolderPath + str(currentframe) + '.jpg'
+            print ('Creating...' + name)
+
+            # writing the extracted images
+            cv2.imwrite(name, frame)
+
+            # increasing counter so that it will
+            # show how many frames are created
+            currentframe += 1
+        else:
+            break
+
+    # Release all space and windows once done
+    cam = None
+
+def segmentVideos(videoFilePath):
     # name of the audio file to recognize
     audio_filename = Global.audioOutput
     # name of the text file to write recognized text
@@ -91,6 +121,11 @@ def segmentVideos(videoFilePath, model):
 
     for idx, word in enumerate(list_of_words):
         if word.word == "next" and list_of_words[idx+1].word=="question":
+            word.word = "nextQuestion"
+            nextTimestamps.append(word)
+            print(word.to_string())
+        if word.word == "answer" and list_of_words[idx+1].word =="please":
+            word.word = "pleaseAnswer"
             nextTimestamps.append(word)
             print(word.to_string())
 
@@ -102,22 +137,35 @@ def segmentVideos(videoFilePath, model):
     print("\tVosk thinks you said:\n")
     print(text)
 
-    clip = VideoFileClip(video_filename)
     # clip1 = clip.subclip(0,5)
     # clip1.write_videofile("outputSample.mp4")
     clipNum = 0
+        
+    # for i in range(len(nextTimestamps)):
+    #     clip = VideoFileClip(video_filename)
 
-    clip1 = clip.subclip(0, nextTimestamps[0].end)
-    clip1.write_videofile(output_folder_path+"/output"+str(clipNum)+".mp4")
-    clipNum+=1
+    #     if i == len(nextTimestamps)-1:
+    #         clip1 = clip.subclip(nextTimestamps[i].start)
+    #         clip1.write_videofile(output_folder_path+str(clipNum)+".mp4")
+    #         clipNum+=1
+    #         break
+
+    #     if nextTimestamps[i].word == "pleaseAnswer":
+    #         if nextTimestamps[i+1].word == "nextQuestion":
+    #             clip1 = clip.subclip(nextTimestamps[i].start, nextTimestamps[i+1].start)
+    #             clip1.write_videofile(output_folder_path+str(clipNum)+".mp4")
+    #             clipNum+=1
 
     for i in range(len(nextTimestamps)):
         clip = VideoFileClip(video_filename)
         if i != len(nextTimestamps)-1:
             clip1 = clip.subclip(nextTimestamps[i].start, nextTimestamps[i+1].start)
-            clip1.write_videofile(output_folder_path+"/output"+str(clipNum)+".mp4")
+            clip1.write_videofile(output_folder_path+str(clipNum)+".mp4")
             clipNum+=1
         else:
             clip1 = clip.subclip(nextTimestamps[i].start)
-            clip1.write_videofile(output_folder_path+"/output"+str(clipNum)+".mp4")
+            clip1.write_videofile(output_folder_path+str(clipNum)+".mp4")
             clipNum+=1
+            break
+
+    extractFirstFiveFrames(videoFilePath)

@@ -6,7 +6,9 @@ import mediapipe as mp
 import pandas as pd
 import math
 import os
+
 from deepface import DeepFace
+import skimage.io as imageio
 
 import streamlit as st
 
@@ -54,6 +56,50 @@ def get_aspect_ratio(top, bottom, right, left):
     width=dis([right.x, right.y], [left.x, left.y])
     return height/width
 
+@st.cache_data
+def readImage():
+    pass
+
+def get_blink_rate(path):
+    left_eye_ratio=[]
+    right_eye_ratio=[]
+    avg_eye_ratio=[]
+
+    count=0
+    blinks=0
+    for i in os.listdir(path):#loop to traverse images
+        image = cv2.imread(path+str(count)+'.jpg')
+        count+=1
+        mp_face_mesh = mp.solutions.face_meshFca
+        face_mesh = mp_face_mesh.FaceMesh()
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        result = face_mesh.process(rgb_image)
+        height, width, _ = image.shape
+        for facial_landmarks in result.multi_face_landmarks:
+            #for right eye
+            pt1 = facial_landmarks.landmark[159]
+            pt2 = facial_landmarks.landmark[145]
+            pt3 = facial_landmarks.landmark[133]
+            pt4 = facial_landmarks.landmark[33]
+            rr=get_aspect_ratio(pt1,pt2,pt3,pt4)
+            right_eye_ratio.append(rr)
+            #for left eye
+            pt5 = facial_landmarks.landmark[386]
+            pt6 = facial_landmarks.landmark[374]
+            pt7 = facial_landmarks.landmark[263]
+            pt8 = facial_landmarks.landmark[362]
+            lr=get_aspect_ratio(pt5,pt6,pt7,pt8)
+            left_eye_ratio.append(lr)
+            avg_eye_ratio.append((lr+rr)/2)
+            if((lr+rr)/2<Global.aspectRatioThreshold):
+                blink+=1
+    blink_rate=blinks/(Global.numberOfFrames/30)
+    if(blink_rate>15):#30 is fps
+        return "Increased Blinking: "+str(blinks)
+    else:
+        return "Normal Blinking: "+str(blinks)
+
+
 def get_lip_ratio(result, height=height, width=width):
     for facial_landmarks in result.multi_face_landmarks:
         pt_bottom = facial_landmarks.landmark[17]
@@ -89,16 +135,7 @@ def eyeGaze(img, result):
     return -1  
 
 
-# truth data analysis
-def get_emotion(img,i):
     
-    p=path+str(i)+".jpg"
-
-    img = cv2.imread(p);
-
-   
-    result=DeepFace.analyze(p,actions=('emotion'), silent=True)
-    return result[0]['dominant_emotion']
 
 
 def deleteFrames():
@@ -114,6 +151,8 @@ def __main__():
     frameStart = 0
 
     parameterDict = {}
+    emotionList = []
+
 
     for i in os.listdir(path):
         img = cv2.imread(path+str(count)+".jpg")
@@ -123,6 +162,7 @@ def __main__():
         face_mesh = mp_face_mesh.FaceMesh(refine_landmarks=True)
         rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         result = face_mesh.process(rgb_image)
+
 
 
         #0 - LIE
@@ -140,7 +180,10 @@ def __main__():
         else: 
             p2 = 1 #Represents Truth
 
-        p3 = get_emotions(count)
+
+        result = DeepFace.analyze((path+str(count)+".jpg"),actions=('emotion'), silent=True)
+        p3 = result[0]['dominant_emotion']
+        emotionList.append(p3)
         if p3 =="fear" or p3=="sad" or p3=="anger":
             p3 = 0 #Represents Lie
         elif p3=="neutral":
@@ -148,13 +191,17 @@ def __main__():
         else:
             p3 = 1 #Represents Truth
 
-        # st.write(p1, p2, p3)
-        parameterDict[count- frameStart] = [p1,p2,p3]   
+        parameterDict[count- frameStart] = [p1, p2 , p3]   
 
         count += 1 
+        img = None
 
-    st.success("dict formed")
-    print(parameterDict)
+    st.success("Processing Done!")
+
+    
+    emotiondf=pd.DataFrame(emotionList,columns=["type"])
+    st.bar_chart(emotiondf)
+    # print(parameterDict)
     giveResults(parameterDict)
         
         
@@ -179,7 +226,14 @@ def giveResults(parameterDict):
     st.write(c1, c2, c3)
 
     st.warning("AVERAGE")
-    st.write("Percentage truth"+str((c1+c2+c3)/3))
+    
+    col1, col2 = st.columns(2)
+    col1.metric(label="Percentage Truth", value="{0:.2f}".format((c1+c2+c3)/3), delta="Truth")
+    col2.metric(label="Percentage Lie", value="{0:.2f}".format(100- (c1+c2+c3)/3), delta="-Lie")
+    # st.warning("NUMBER OF FRAMES")
+    # st.write(Global.numberOfFrames)
+
+
 
 
 

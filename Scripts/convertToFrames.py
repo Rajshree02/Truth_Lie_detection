@@ -16,36 +16,37 @@ from Scripts import Global
 # 	print ('Error: Creating directory of data')
 
 # frame
-def makeFrames():
+
+def makeFrames(filePath):
     currentframe = 0
     currentVideo = 0
-    for i in os.listdir(Global.videoOutputFolderPath):
-        cam = cv2.VideoCapture(Global.videoOutputFolderPath+"output"+str(currentVideo)+".mp4")
-        while(True):
-            
-            # reading from frame
-            ret,frame = cam.read()
+    # for i in os.listdir(Global.videoOutputFolderPath):
+    # cam = cv2.VideoCapture(Global.videoOutputFolderPath+"output"+str(currentVideo)+".mp4")
+    cam = cv2.VideoCapture(filePath)
+    while(True):
+        
+        # reading from frame
+        ret,frame = cam.read()
 
-            if ret:
-                # if video is still left continue creating images
-                name = Global.frameFolderPath + str(currentframe) + '.jpg'
-                print ('Creating...' + name)
+        if ret:
+            # if video is still left continue creating images
+            name = Global.frameFolderPath + str(currentframe) + '.jpg'
+            print ('Creating...' + name)
 
-                # writing the extracted images
-                cv2.imwrite(name, frame)
+            # writing the extracted images
+            cv2.imwrite(name, frame)
 
-                # increasing counter so that it will
-                # show how many frames are created
-                currentframe += 1
-            else:
-                break
+            # increasing counter so that it will
+            # show how many frames are created
+            currentframe += 1
+        else:
+            break
 
-        # Release all space and windows once done
-        cam.release()
-        cv2.destroyAllWindows()
-        currentVideo+=1
+    # Release all space and windows once done
+    cam = None
+    currentVideo+=1
 
-    Global.numberOfFrames = currentframe-1
+    Global.numberOfFrames = currentframe
 
 
 
